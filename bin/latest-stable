@@ -15,6 +15,6 @@ if [ -n "${GITHUB_API_TOKEN:-}" ]; then
 	curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
 fi
 
-version="$(curl "${curl_opts[@]}" $GH_REPO/releases/latest)"
-version="${version#$GH_REPO/releases/tag/v}"
+version="$(curl "${curl_opts[@]}" ${GH_REPO}/releases/latest)"
+version="${version#"$GH_REPO/releases/tag/v"}"
 printf "%s\n" "$version"

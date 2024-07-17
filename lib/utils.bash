@@ -29,8 +29,8 @@ arch() {
 OS=${OS:-$(os)}
 ARCH=${ARCH:-$(arch)}
 case $OS in
-    darwin) STANDALONE_ARCHIVE_FORMAT=zip ;;
-	*) STANDALONE_ARCHIVE_FORMAT=tar.gz ;;
+darwin) STANDALONE_ARCHIVE_FORMAT=zip ;;
+*) STANDALONE_ARCHIVE_FORMAT=tar.gz ;;
 esac
 
 fail() {
@@ -51,9 +51,9 @@ sort_versions() {
 }
 
 list_all_versions() {
-    curl -fsSL https://api.github.com/repos/coder/coder/releases |
-        awk -F'"' '/"tag_name"/ {print $4}' |
-        tr -d v
+	curl -fsSL https://api.github.com/repos/coder/coder/releases |
+		awk -F'"' '/"tag_name"/ {print $4}' |
+		tr -d v
 }
 
 download_release() {
