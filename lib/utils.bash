@@ -2,10 +2,36 @@
 
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for coder.
 GH_REPO="https://github.com/coder/coder"
 TOOL_NAME="coder"
 TOOL_TEST="coder --version"
+
+os() {
+	uname="$(uname)"
+	case $uname in
+	Linux) echo linux ;;
+	Darwin) echo darwin ;;
+	FreeBSD) echo freebsd ;;
+	*) echo "$uname" ;;
+	esac
+}
+
+arch() {
+	uname_m=$(uname -m)
+	case $uname_m in
+	aarch64) echo arm64 ;;
+	x86_64) echo amd64 ;;
+	armv7l) echo armv7 ;;
+	*) echo "$uname_m" ;;
+	esac
+}
+
+OS=${OS:-$(os)}
+ARCH=${ARCH:-$(arch)}
+case $OS in
+    darwin) STANDALONE_ARCHIVE_FORMAT=zip ;;
+	*) STANDALONE_ARCHIVE_FORMAT=tar.gz ;;
+esac
 
 fail() {
 	echo -e "asdf-$TOOL_NAME: $*"
@@ -24,16 +50,10 @@ sort_versions() {
 		LC_ALL=C sort -t. -k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n | awk '{print $2}'
 }
 
-list_github_tags() {
-	git ls-remote --tags --refs "$GH_REPO" |
-		grep -o 'refs/tags/.*' | cut -d/ -f3- |
-		sed 's/^v//' # NOTE: You might want to adapt this sed to remove non-version strings from tags
-}
-
 list_all_versions() {
-	# TODO: Adapt this. By default we simply list the tag names from GitHub releases.
-	# Change this function if coder has other means of determining installable versions.
-	list_github_tags
+    curl -fsSL https://api.github.com/repos/coder/coder/releases |
+        awk -F'"' '/"tag_name"/ {print $4}' |
+        tr -d v
 }
 
 download_release() {
@@ -41,9 +61,7 @@ download_release() {
 	version="$1"
 	filename="$2"
 
-	# TODO: Adapt the release URL convention for coder
-	url="$GH_REPO/archive/v${version}.tar.gz"
-
+	url="$GH_REPO/releases/download/v$version/coder_${version}_${OS}_${ARCH}.$STANDALONE_ARCHIVE_FORMAT"
 	echo "* Downloading $TOOL_NAME release $version..."
 	curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
 }
@@ -61,7 +79,6 @@ install_version() {
 		mkdir -p "$install_path"
 		cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
 
-		# TODO: Assert coder executable exists.
 		local tool_cmd
 		tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
 		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
@@ -71,4 +88,16 @@ install_version() {
 		rm -rf "$install_path"
 		fail "An error occurred while installing $TOOL_NAME $version."
 	)
+}
+
+has_standalone() {
+	case $ARCH in
+	amd64) return 0 ;;
+	arm64) return 0 ;;
+	armv7)
+		[ "$(distro)" != darwin ]
+		return
+		;;
+	*) return 1 ;;
+	esac
 }
